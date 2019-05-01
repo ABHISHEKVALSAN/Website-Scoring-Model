@@ -59,11 +59,11 @@ def get_text_body_ratio(soup):
 	#print words
 	timeTaken(startTime,"Text Body Ratio")
 	return float(len(words))
-def get_emph_body_text_percentage(d):
+def get_emph_body_text_percentage(d,bs):
 
 	#print "Param3"
 	startTime=datetime.datetime.now()
-	boldText = d.find_elements_by_tag_name("b")
+	boldText = bs.findAll("b")
 	words=[]
 	for i in boldText:
 		words+= string_to_words(str(unidecode.unidecode(i.text)))
@@ -74,7 +74,6 @@ def get_emph_body_text_percentage(d):
 		txt=str(unidecode.unidecode(d.execute_script("return document.body.textContent")))
 	pattern = re.compile("!+")
 	exclWordCount=len(re.findall(pattern,txt))
-
 	words=get_words(d)
 	capWordCount=0
 	for i in words:
@@ -102,20 +101,20 @@ def get_text_position_changes(s):
 			pass
 	timeTaken(startTime,"Text Positional Changes")
 	return textPositionChanges
-def get_text_clusters(d):
+def get_text_clusters(d,bs):
 
 	#print "Param5"
 	startTime=datetime.datetime.now()
-	tableText= d.find_elements_by_tag_name("td")+d.find_elements_by_tag_name("table")
-	paraText = d.find_elements_by_tag_name("p")
+	tableText= bs.findAll("td")+bs.findAll("table")
+	paraText = bs.findAll("p")
 	textClusters=len(tableText)+len(paraText)
 	timeTaken(startTime,"Text Clusters")
 	return textClusters
-def get_visible_links(d):
+def get_visible_links(d,bs):
 
 	#print "Param6"
 	startTime=datetime.datetime.now()
-	links=d.find_elements_by_tag_name("a")
+	links=bs.findAll("a")
 	visibleLinkCount=0
 	for i in links:
 		if i.text != "":
@@ -156,10 +155,10 @@ def get_graphics_size(d):
 			pass
 	timeTaken(startTime,"Graphic Size")
 	return float(graphicsSize)/1024.0
-def get_graphics_count(d):
+def get_graphics_count(d,bs):
 	startTime=datetime.datetime.now()
 	#print "Param9"
-	styleSteets=d.find_elements_by_tag_name("style")
+	styleSteets=bs.findAll("style")
 	images=d.execute_script("return document.images;")
 	graphicsCount=len(styleSteets)+len(images)
 	timeTaken(startTime,"Graphics Count")
@@ -197,7 +196,7 @@ def setDriverOptions():
 	options.add_argument("--headless")
 	return	webdriver.Chrome(chrome_options=options)
 def getMetrics(num,url):
-	st 				= datetime.datetime.now()
+	startTime 		= datetime.datetime.now()
 	textFilename	= "CorruptUrls.txt"
 	csvFilename		= "tempUrlMetrics.csv"
 	try:
@@ -217,14 +216,13 @@ def getMetrics(num,url):
 		#---------------------------------------------------#
 		wordCount				= get_word_count(driver)#Parameter 1
 		headTextCount			= get_text_body_ratio(soup)#Parameter 2
-		emphTextCount			= get_emph_body_text_percentage(driver)#Parameter 3
+		emphTextCount			= get_emph_body_text_percentage(driver,soup)#Parameter 3
 		textPositionalChanges	= get_text_position_changes(soup)#Parameter 4
-		textClusters			= get_text_clusters(driver)#Parameter 5
-		visibleLinks			= get_visible_links(driver)#Parameter 6
+		textClusters			= get_text_clusters(driver,soup)#Parameter 5
+		visibleLinks			= get_visible_links(driver,soup)#Parameter 6
 		pageSize				= get_page_size(driver)#Parameter 7
 		graphicsSize			= get_graphics_size(driver)#Parameter 8
-		graphicsCount 			= get_graphics_count(driver)#Parameter 9
-
+		graphicsCount 			= get_graphics_count(driver,soup)#Parameter 9
 		colorCount				= get_color_count(image)#Parameter 10
 		fontCount				= get_font_count(driver)#Parameter 11
 		colourFullness			= getColorfullness(image)#Parameter 12
@@ -270,7 +268,7 @@ def getMetrics(num,url):
 		f2			= open(textFilename,"a+")
 		f2.write(url+"\n")
 		f2.close()
-	print(datetime.datetime.now()-st,"\t\t",datetime.datetime.now(),url)
+	print(datetime.datetime.now()-startTime,"\t\t",datetime.datetime.now(),url)
 	return
 def main(filename):
 	fields			= ["slno","url","p1","p2","p3","p4","p5","p6","p7","p8","p9","p10","p11","p12","p13"]
