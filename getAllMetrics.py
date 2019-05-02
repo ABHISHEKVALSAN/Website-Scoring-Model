@@ -15,10 +15,12 @@ import unidecode
 import traceback
 import webcolors
 
+gridCount=1
+rois=[]
 
 
-def timeTaken(startTime, Metric):
-	print(Metric.ljust(25," "),datetime.datetime.now()-startTime)
+def timeTaken(startTime, Metric, MetricValue=""):
+	print(Metric.ljust(25," "),datetime.datetime.now()-startTime,"\t\t",MetricValue)
 def string_to_words(s):
 	s=s.replace("\n"," ")
 	s=s.replace(string.punctuation,"")
@@ -184,10 +186,63 @@ def getColorfullness(image):
 	meanRoot = np.sqrt((rbMean ** 2) + (ybMean ** 2))
 	timeTaken(startTime,"Colourfullness")
 	return stdRoot + (0.3 * meanRoot)
-def getVisualComplexity(image):
+def getVisualComplexity(image,num):
 	startTime=datetime.datetime.now()
-	visualComplexity=1
-	timeTaken(startTime,"Visual Complexity")
+	def splitImage(inImg):
+		h,w = inImg.shape[0], inImg.shape[1]
+		off1X=0
+		off1Y=0
+		off2X=0
+		off2Y=0
+		if w >= h:  #split X
+			off1X=0
+			off2X=int(w/2)
+			img1 = inImg[0:h, 0:off2X]
+			img2 = inImg[0:h, off2X:w]
+		else:       #split Y
+			off1Y=0
+			off2Y=int(h/2)
+			img1 = inImg[0:off2Y, 0:w]
+			img2 = inImg[off2Y:h, 0:w]
+		return off1X,off1Y,img1, off2X,off2Y,img2
+	def qt(inImg, minStd, minSize, offX, offY):
+		global gridCount
+		global rois
+		h,w = inImg.shape[0], inImg.shape[1]
+		m,s = cv2.meanStdDev(inImg)
+		if s>=minStd and max(h,w)>minSize:
+			oX1,oY1,im1, oX2,oY2,im2 = splitImage(inImg)
+			gridCount+=1
+			qt(im1, minStd, minSize, offX+oX1, offY+oY1)
+			qt(im2, minStd, minSize, offX+oX2, offY+oY2)
+		else:
+			rois.append([offX,offY,w,h,m,s])
+
+	global gridCount
+	global rois
+
+	gridCount=1
+	rois=[]
+	offX, offY=0,0
+	minDev        = 10.0
+	minSz         = 20
+
+	#cv2.imshow('Start Image',image)
+	h,w = image.shape[0], image.shape[1]
+	m,s = cv2.meanStdDev(image)
+	qt(image,minDev,minSz,offX,offY)
+	imgOut=image
+	for e in rois:
+		col=255
+		if e[5]<minDev:
+			col=0
+		cv2.rectangle(imgOut, (e[0],e[1]), (e[0]+e[2],e[1]+e[3]), col, 1)
+	cv2.imwrite('webScreenshot/screenshot'+str(num)+'_Quad.png',imgOut)
+	#cv2.imshow('Quad Image',imgOut)
+	#cv2.waitKey(0)
+	#cv2.destroyAllWindows()
+	visualComplexity=gridCount#((gridCount*1.0)/(1024.0*768.0))**-1
+	timeTaken(startTime,"Visual Complexity",visualComplexity)
 	return visualComplexity
 def setDriverOptions():
 	options 				= Options()
@@ -206,9 +261,9 @@ def getMetrics(num,url):
 		driver.set_window_size(1024, 768)
 		driver.implicitly_wait(10)
 		WebDriverWait(driver, timeout=10).until(lambda x: x.find_elements_by_tag_name('body'))
-		driver.save_screenshot('screenshot.png')
-		image = cv2.imread('screenshot.png')
-		imageGrey = cv2.imread('screenshot.png',0)
+		driver.save_screenshot('webScreenshot/screenshot'+str(num)+'.png')
+		image = cv2.imread('webScreenshot/screenshot'+str(num)+'.png')
+		imageGrey = cv2.imread('webScreenshot/screenshot'+str(num)+'.png',0)
 		page_source=driver.page_source
 		soup=BeautifulSoup(page_source,'html.parser')
 		#---------------------------------------------------#
@@ -226,7 +281,7 @@ def getMetrics(num,url):
 		colorCount				= get_color_count(image)#Parameter 10
 		fontCount				= get_font_count(driver)#Parameter 11
 		colourFullness			= getColorfullness(image)#Parameter 12
-		visualComplexity		= getVisualComplexity(imageGrey)
+		visualComplexity		= getVisualComplexity(imageGrey,num)
 		if pageSize==0:
 			graphicsPercent=0.0
 		else:
