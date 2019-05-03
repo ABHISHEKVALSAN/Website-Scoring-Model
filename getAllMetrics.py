@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from PIL import Image
+from scipy.spatial import cKDTree as KDTree
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
@@ -7,6 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 import csv
 import cv2
 import datetime
+import matplotlib
 import numpy as np
 import re
 import string
@@ -14,6 +15,7 @@ import sys
 import unidecode
 import traceback
 import webcolors
+
 
 gridCount=1
 rois=[]
@@ -37,11 +39,11 @@ def get_words(d):
 def get_word_count(d):
 	startTime=datetime.datetime.now()
 	words=get_words(d)
-	timeTaken(startTime,"Word Count")
-	return float(len(words))
-def get_text_body_ratio(soup):
+	wordCount=float(len(words))
+	timeTaken(startTime,"Word Count",wordCount)
+	return wordCount
+def get_text_body_ratio(soup,wordCount):
 
-	#print "Param2"
 	startTime=datetime.datetime.now()
 	headers=[]
 	for i in range(1,7):
@@ -59,9 +61,14 @@ def get_text_body_ratio(soup):
 	if len(txt)!=0:
 		words=string_to_words(str(unidecode.unidecode(txt)))
 	#print words
-	timeTaken(startTime,"Text Body Ratio")
-	return float(len(words))
-def get_emph_body_text_percentage(d,bs):
+	headTextCount=float(len(words))
+	if wordCount:
+		textBodyRatio=headTextCount/wordCount
+	else:
+		textBodyRatio=0.0
+	timeTaken(startTime,"Text Body Ratio",textBodyRatio)
+	return textBodyRatio
+def get_emph_body_text_percentage(d,bs,wordCount):
 
 	#print "Param3"
 	startTime=datetime.datetime.now()
@@ -81,9 +88,17 @@ def get_emph_body_text_percentage(d,bs):
 	for i in words:
 		if i==i.upper():
 			capWordCount+=1
-	timeTaken(startTime,"Emph text Percent")
+
 	#print boldWordCount, exclWordCount, capWordCount
-	return boldWordCount + exclWordCount + capWordCount
+
+	emphTextCount=float(boldWordCount + exclWordCount + capWordCount)
+
+	if wordCount:
+		emphTextPercent=(emphTextCount/wordCount)*100.0
+	else:
+		emphTextPercent=0.0
+	timeTaken(startTime,"Emph text Percent",emphTextPercent)
+	return
 def get_text_position_changes(s):
 	startTime=datetime.datetime.now()
 	#print "Param
@@ -101,7 +116,7 @@ def get_text_position_changes(s):
 					prev=position
 		except:
 			pass
-	timeTaken(startTime,"Text Positional Changes")
+	timeTaken(startTime,"Text Positional Changes",textPositionChanges)
 	return textPositionChanges
 def get_text_clusters(d,bs):
 
@@ -110,7 +125,7 @@ def get_text_clusters(d,bs):
 	tableText= bs.findAll("td")+bs.findAll("table")
 	paraText = bs.findAll("p")
 	textClusters=len(tableText)+len(paraText)
-	timeTaken(startTime,"Text Clusters")
+	timeTaken(startTime,"Text Clusters",textClusters)
 	return textClusters
 def get_visible_links(d,bs):
 
@@ -121,7 +136,7 @@ def get_visible_links(d,bs):
 	for i in links:
 		if i.text != "":
 			visibleLinkCount+=1
-	timeTaken(startTime,"Visible Links")
+	timeTaken(startTime,"Visible Links",visibleLinkCount)
 	return visibleLinkCount
 def get_page_size(d):
 
@@ -137,12 +152,13 @@ def get_page_size(d):
 	pageSize=0
 	for i in networkData:
 		try:
-			pageSize+=int(i[u'transferSize'])
+			pageSize+=float(i[u'transferSize'])
 		except:
 			pass
-	timeTaken(startTime,"Page Size")
-	return float(pageSize)/1024.0
-def get_graphics_size(d):
+	pageSize=float(pageSize)/1024.0
+	timeTaken(startTime,"Page Size",pageSize)
+	return pageSize
+def get_graphics_percent(d,pageSize):
 
 	#print "Param8"
 	startTime=datetime.datetime.now()
@@ -152,28 +168,90 @@ def get_graphics_size(d):
 	for i in networkData:
 		try:
 			if i[u'initiatorType']== u'script' or i[u'initiatorType']==u'img' or i['initiatorType']== u'css':
-				graphicsSize+=int(i[u'transferSize'])
+				graphicsSize+=float(i[u'transferSize'])
 		except:
 			pass
-	timeTaken(startTime,"Graphic Size")
-	return float(graphicsSize)/1024.0
+	graphicsSize=float(graphicsSize)/1024.0
+	timeTaken(startTime,"Graphic Size",graphicsSize)
+	if pageSize==0:
+		graphicsPercent=0.0
+	else:
+		graphicsPercent=graphicsSize*100.0/pageSize
+	return graphicsPercent
 def get_graphics_count(d,bs):
 	startTime=datetime.datetime.now()
 	#print "Param9"
 	styleSteets=bs.findAll("style")
+	scripts=bs.findAll("script")
 	images=d.execute_script("return document.images;")
-	graphicsCount=len(styleSteets)+len(images)
-	timeTaken(startTime,"Graphics Count")
+	graphicsCount=len(styleSteets)+len(images)+len(scripts)
+	timeTaken(startTime,"Graphics Count",graphicsCount)
 	return  graphicsCount
 def get_color_count(image):
+
 	startTime=datetime.datetime.now()
-	c_count=1
-	timeTaken(startTime,"Color Count")
-	return c_count
-def get_font_count(d):
+	use_colors = matplotlib.colors.cnames
+	named_colors = {k: tuple(map(int, (v[1:3], v[3:5], v[5:7]), 3*(16,))) for k, v in use_colors.items()}
+	ncol = len(named_colors)
+	no_match = named_colors['purple']
+
+	color_tuples = list(named_colors.values())
+	color_tuples.append(no_match)
+	color_tuples = np.array(color_tuples)
+
+	color_names = list(named_colors)
+	color_names.append('no match')
+
+	tree = KDTree(color_tuples[:-1])
+
+	tolerance = np.inf
+	dist, idx = tree.query(image, distance_upper_bound=tolerance)
+
+	colCounts = np.bincount(idx.ravel(), None, ncol+1).tolist()
+	colNames  = color_names
+
+	colors=[]
+	for i in range(len(color_names)):
+		colors.append([colCounts[i],color_names[i]])
+
+	colors.sort(reverse=True)
+
+	colorCount=0
+	for color in colors:
+		if color[0]>=7864: #1% of the pixels
+			colorCount+=1
+		else:
+			break
+
+	timeTaken(startTime,"Color Count",colorCount)
+	return colorCount
+def get_font_count(d,bs):
 	startTime=datetime.datetime.now()
-	fontCount=1
-	timeTaken(startTime,"Font Count")
+	divCount=len(bs.findAll("div"))
+	diffFont=set([])
+	for i in range(divCount):
+		fontStr=""
+		script='return document.getElementsByTagName("div")['+str(i)+']["style"]'
+		fontStr+=d.execute_script(script+'["font"];')+"font"
+		fontStr+=d.execute_script(script+'["fontDisplay"];')+"fontDisplay"
+		fontStr+=d.execute_script(script+'["fontFamily"];')+"fontFamily"
+		fontStr+=d.execute_script(script+'["fontFeatureSettings"];')+"fontFeatureSettings"
+		fontStr+=d.execute_script(script+'["fontKerning"];')+"fontKerning"
+		fontStr+=d.execute_script(script+'["fontSize"];')+"fontSize"
+		fontStr+=d.execute_script(script+'["fontStretch"];')+"fontStretch"
+		fontStr+=d.execute_script(script+'["fontStyle"];')+"fontStyle"
+		fontStr+=d.execute_script(script+'["fontVariant"];')+"fontVariant"
+		fontStr+=d.execute_script(script+'["fontVariantCaps"];')+"fontVariantCaps"
+		fontStr+=d.execute_script(script+'["fontVariantEastAsian"];')+"fontVariantEastAsian"
+		fontStr+=d.execute_script(script+'["fontVariantLigatures"];')+"fontVariantLigatures"
+		fontStr+=d.execute_script(script+'["fontVariantNumeric"];')+"fontVariantNumeric"
+		fontStr+=d.execute_script(script+'["fontVariationSettings"];')+"fontVariationSettings"
+		fontStr+=d.execute_script(script+'["fontWeight"];')+"fontWeight"
+
+		diffFont.add(fontStr)
+	#print(diffFont)
+	fontCount=len(diffFont)-1 # -1 for empty font (default font)
+	timeTaken(startTime,"Font Count",fontCount)
 	return fontCount
 def getColorfullness(image):
 	startTime=datetime.datetime.now()
@@ -184,8 +262,9 @@ def getColorfullness(image):
 	(ybMean, ybStd) = (np.mean(yb), np.std(yb))
 	stdRoot = np.sqrt((rbStd ** 2) + (ybStd ** 2))
 	meanRoot = np.sqrt((rbMean ** 2) + (ybMean ** 2))
-	timeTaken(startTime,"Colourfullness")
-	return stdRoot + (0.3 * meanRoot)
+	colourFullness = stdRoot + (0.3 * meanRoot)
+	timeTaken(startTime,"Colourfullness",colourFullness)
+	return colourFullness
 def getVisualComplexity(image,num):
 	startTime=datetime.datetime.now()
 	def splitImage(inImg):
@@ -256,11 +335,10 @@ def getMetrics(num,url):
 	csvFilename		= "tempUrlMetrics.csv"
 	try:
 		driver			= setDriverOptions()
-		driver.implicitly_wait(3)
 		driver.get(url)
 		driver.set_window_size(1024, 768)
-		driver.implicitly_wait(10)
-		WebDriverWait(driver, timeout=10).until(lambda x: x.find_elements_by_tag_name('body'))
+		driver.implicitly_wait(3)
+		WebDriverWait(driver, timeout=5).until(lambda x: x.find_elements_by_tag_name('body'))
 		driver.save_screenshot('webScreenshot/screenshot'+str(num)+'.png')
 		image = cv2.imread('webScreenshot/screenshot'+str(num)+'.png')
 		imageGrey = cv2.imread('webScreenshot/screenshot'+str(num)+'.png',0)
@@ -270,36 +348,26 @@ def getMetrics(num,url):
 		#--------- Web Metric Calculation ------------------#
 		#---------------------------------------------------#
 		wordCount				= get_word_count(driver)#Parameter 1
-		headTextCount			= get_text_body_ratio(soup)#Parameter 2
-		emphTextCount			= get_emph_body_text_percentage(driver,soup)#Parameter 3
+		textBodyRatio			= get_text_body_ratio(soup,wordCount)#Parameter 2
+		emphTextPercent			= get_emph_body_text_percentage(driver,soup,wordCount)#Parameter 3
 		textPositionalChanges	= get_text_position_changes(soup)#Parameter 4
 		textClusters			= get_text_clusters(driver,soup)#Parameter 5
 		visibleLinks			= get_visible_links(driver,soup)#Parameter 6
 		pageSize				= get_page_size(driver)#Parameter 7
-		graphicsSize			= get_graphics_size(driver)#Parameter 8
+		graphicsSize			= get_graphics_percent(driver,pageSize)#Parameter 8
 		graphicsCount 			= get_graphics_count(driver,soup)#Parameter 9
 		colorCount				= get_color_count(image)#Parameter 10
-		fontCount				= get_font_count(driver)#Parameter 11
+		fontCount				= get_font_count(driver,soup)#Parameter 11
 		colourFullness			= getColorfullness(image)#Parameter 12
 		visualComplexity		= getVisualComplexity(imageGrey,num)
-		if pageSize==0:
-			graphicsPercent=0.0
-		else:
-			graphicsPercent=graphicsSize*100.0/pageSize
 
-		if wordCount:
-			textBodyRatio=headTextCount/wordCount
-			emphTextRatio=emphTextCount/wordCount
-		else:
-			textBodyRatio=0.0
-			emphTextRatio=0.0
 
 		tempMetrics=[
 					num,\
 					url,\
 					wordCount,\
 					textBodyRatio,\
-					emphTextRatio,\
+					emphTextPercent,\
 					textPositionalChanges,\
 					textClusters,\
 					visibleLinks,\
@@ -323,8 +391,7 @@ def getMetrics(num,url):
 		f2			= open(textFilename,"a+")
 		f2.write(url+"\n")
 		f2.close()
-	print(datetime.datetime.now()-startTime,"\t\t",datetime.datetime.now(),url)
-	return
+	print("\n\n",datetime.datetime.now()-startTime,"\t",datetime.datetime.now(),"\t",num,url,"\n\n")
 def main(filename):
 	fields			= ["slno","url","p1","p2","p3","p4","p5","p6","p7","p8","p9","p10","p11","p12","p13"]
 	csvFilename		= "tempUrlMetrics.csv"
@@ -338,5 +405,5 @@ def main(filename):
 		getMetrics(row['id'],row['urls'])
 	csvFile.close()
 if __name__=="__main__":
-    filename=sys.argv[-1]
-    main(filename)
+	filename=sys.argv[-1]
+	main(filename)
