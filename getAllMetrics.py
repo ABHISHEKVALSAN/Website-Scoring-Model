@@ -3,11 +3,13 @@ from scipy.spatial import cKDTree as KDTree
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+from pyvirtualdisplay import Display
 
 import csv
 import cv2
 import datetime
 import matplotlib
+import multiprocessing as mp
 import numpy as np
 import re
 import string
@@ -40,7 +42,7 @@ def get_word_count(d):
 	startTime=datetime.datetime.now()
 	words=get_words(d)
 	wordCount=float(len(words))
-	timeTaken(startTime,"Word Count",wordCount)
+	#timeTaken(startTime,"Word Count",wordCount)
 	return wordCount
 def get_text_body_ratio(soup,wordCount):
 
@@ -66,7 +68,7 @@ def get_text_body_ratio(soup,wordCount):
 		textBodyRatio=headTextCount/wordCount
 	else:
 		textBodyRatio=0.0
-	timeTaken(startTime,"Text Body Ratio",textBodyRatio)
+	#timeTaken(startTime,"Text Body Ratio",textBodyRatio)
 	return textBodyRatio
 def get_emph_body_text_percentage(d,bs,wordCount):
 
@@ -97,8 +99,8 @@ def get_emph_body_text_percentage(d,bs,wordCount):
 		emphTextPercent=(emphTextCount/wordCount)*100.0
 	else:
 		emphTextPercent=0.0
-	timeTaken(startTime,"Emph text Percent",emphTextPercent)
-	return
+	#timeTaken(startTime,"Emph text Percent",emphTextPercent)
+	return emphTextPercent
 def get_text_position_changes(s):
 	startTime=datetime.datetime.now()
 	#print "Param
@@ -116,7 +118,7 @@ def get_text_position_changes(s):
 					prev=position
 		except:
 			pass
-	timeTaken(startTime,"Text Positional Changes",textPositionChanges)
+	#timeTaken(startTime,"Text Positional Changes",textPositionChanges)
 	return textPositionChanges
 def get_text_clusters(d,bs):
 
@@ -125,7 +127,7 @@ def get_text_clusters(d,bs):
 	tableText= bs.findAll("td")+bs.findAll("table")
 	paraText = bs.findAll("p")
 	textClusters=len(tableText)+len(paraText)
-	timeTaken(startTime,"Text Clusters",textClusters)
+	#timeTaken(startTime,"Text Clusters",textClusters)
 	return textClusters
 def get_visible_links(d,bs):
 
@@ -136,7 +138,7 @@ def get_visible_links(d,bs):
 	for i in links:
 		if i.text != "":
 			visibleLinkCount+=1
-	timeTaken(startTime,"Visible Links",visibleLinkCount)
+	#timeTaken(startTime,"Visible Links",visibleLinkCount)
 	return visibleLinkCount
 def get_page_size(d):
 
@@ -156,7 +158,7 @@ def get_page_size(d):
 		except:
 			pass
 	pageSize=float(pageSize)/1024.0
-	timeTaken(startTime,"Page Size",pageSize)
+	#timeTaken(startTime,"Page Size",pageSize)
 	return pageSize
 def get_graphics_percent(d,pageSize):
 
@@ -172,11 +174,12 @@ def get_graphics_percent(d,pageSize):
 		except:
 			pass
 	graphicsSize=float(graphicsSize)/1024.0
-	timeTaken(startTime,"Graphic Size",graphicsSize)
+
 	if pageSize==0:
 		graphicsPercent=0.0
 	else:
 		graphicsPercent=graphicsSize*100.0/pageSize
+	#timeTaken(startTime,"Graphic Size",graphicsSize)
 	return graphicsPercent
 def get_graphics_count(d,bs):
 	startTime=datetime.datetime.now()
@@ -185,7 +188,7 @@ def get_graphics_count(d,bs):
 	scripts=bs.findAll("script")
 	images=d.execute_script("return document.images;")
 	graphicsCount=len(styleSteets)+len(images)+len(scripts)
-	timeTaken(startTime,"Graphics Count",graphicsCount)
+	#timeTaken(startTime,"Graphics Count",graphicsCount)
 	return  graphicsCount
 def get_color_count(image):
 
@@ -223,7 +226,7 @@ def get_color_count(image):
 		else:
 			break
 
-	timeTaken(startTime,"Color Count",colorCount)
+	#timeTaken(startTime,"Color Count",colorCount)
 	return colorCount
 def get_font_count(d,bs):
 	startTime=datetime.datetime.now()
@@ -251,7 +254,7 @@ def get_font_count(d,bs):
 		diffFont.add(fontStr)
 	#print(diffFont)
 	fontCount=len(diffFont)-1 # -1 for empty font (default font)
-	timeTaken(startTime,"Font Count",fontCount)
+	#timeTaken(startTime,"Font Count",fontCount)
 	return fontCount
 def getColorfullness(image):
 	startTime=datetime.datetime.now()
@@ -263,7 +266,7 @@ def getColorfullness(image):
 	stdRoot = np.sqrt((rbStd ** 2) + (ybStd ** 2))
 	meanRoot = np.sqrt((rbMean ** 2) + (ybMean ** 2))
 	colourFullness = stdRoot + (0.3 * meanRoot)
-	timeTaken(startTime,"Colourfullness",colourFullness)
+	#timeTaken(startTime,"Colourfullness",colourFullness)
 	return colourFullness
 def getVisualComplexity(image,num):
 	startTime=datetime.datetime.now()
@@ -321,7 +324,7 @@ def getVisualComplexity(image,num):
 	#cv2.waitKey(0)
 	#cv2.destroyAllWindows()
 	visualComplexity=gridCount#((gridCount*1.0)/(1024.0*768.0))**-1
-	timeTaken(startTime,"Visual Complexity",visualComplexity)
+	#timeTaken(startTime,"Visual Complexity",visualComplexity)
 	return visualComplexity
 def setDriverOptions():
 	options 				= Options()
@@ -329,10 +332,12 @@ def setDriverOptions():
 	chrome_driver_binary	= "/home/abhiavk/git/mysite/mysiteEnv/bin/chromedriver"
 	options.add_argument("--headless")
 	return	webdriver.Chrome(chrome_options=options)
-def getMetrics(num,url):
+def getMetrics(urlFile):
+	num=urlFile['id']
+	url=urlFile['urls']
 	startTime 		= datetime.datetime.now()
 	textFilename	= "CorruptUrls.txt"
-	csvFilename		= "tempUrlMetrics.csv"
+	csvFilename		= "tempMpUrlMetrics.csv"
 	try:
 		driver			= setDriverOptions()
 		driver.get(url)
@@ -354,7 +359,7 @@ def getMetrics(num,url):
 		textClusters			= get_text_clusters(driver,soup)#Parameter 5
 		visibleLinks			= get_visible_links(driver,soup)#Parameter 6
 		pageSize				= get_page_size(driver)#Parameter 7
-		graphicsSize			= get_graphics_percent(driver,pageSize)#Parameter 8
+		graphicsPercent			= get_graphics_percent(driver,pageSize)#Parameter 8
 		graphicsCount 			= get_graphics_count(driver,soup)#Parameter 9
 		colorCount				= get_color_count(image)#Parameter 10
 		fontCount				= get_font_count(driver,soup)#Parameter 11
@@ -389,20 +394,26 @@ def getMetrics(num,url):
 		driver		=	setDriverOptions()
 		print("Error scraping the Url")
 		f2			= open(textFilename,"a+")
-		f2.write(url+"\n")
+		f2.write(num+","+url+"\n")
 		f2.close()
-	print("\n\n",datetime.datetime.now()-startTime,"\t",datetime.datetime.now(),"\t",num,url,"\n\n")
+	print(datetime.datetime.now()-startTime,"\t",datetime.datetime.now(),"\t",num,url)
 def main(filename):
 	fields			= ["slno","url","p1","p2","p3","p4","p5","p6","p7","p8","p9","p10","p11","p12","p13"]
-	csvFilename		= "tempUrlMetrics.csv"
+	csvFilename		= "tempMpUrlMetrics.csv"
 	csvFile			= open(csvFilename,"a+")
 	csvWriter		= csv.writer(csvFile)
 	csvWriter.writerow(fields)
 	csvFile.close()
 	csvFile			= open(filename,"r")
 	urlFile			= csv.DictReader(csvFile)
-	for row in urlFile:
-		getMetrics(row['id'],row['urls'])
+	driver			= setDriverOptions()
+	manager 		= mp.Manager()
+	urls 			= manager.list()
+	results 		= manager.list()
+	pool 			= mp.Pool(mp.cpu_count()-3)
+	results 		= pool.map_async(getMetrics, urlFile)
+	while not results.ready():
+		pass
 	csvFile.close()
 if __name__=="__main__":
 	filename=sys.argv[-1]
