@@ -330,7 +330,7 @@ def setDriverOptions():
 	options 				= Options()
 	options.binary_location = "/home/abhiavk/git/mysite/mysiteEnv/bin/chromium-browser"
 	chrome_driver_binary	= "/home/abhiavk/git/mysite/mysiteEnv/bin/chromedriver"
-	options.add_argument("--headless")
+	#options.add_argument("--headless")
 	return	webdriver.Chrome(chrome_options=options)
 def getMetrics(urlFile):
 	num=urlFile['id']
@@ -341,9 +341,10 @@ def getMetrics(urlFile):
 	try:
 		driver			= setDriverOptions()
 		driver.get(url)
+		driver.implicitly_wait(10)
 		driver.set_window_size(1024, 768)
-		driver.implicitly_wait(3)
-		WebDriverWait(driver, timeout=5).until(lambda x: x.find_elements_by_tag_name('body'))
+		WebDriverWait(driver, timeout=15).until(lambda x: x.find_elements_by_tag_name('div'))
+
 		driver.save_screenshot('webScreenshot/screenshot'+str(num)+'.png')
 		image = cv2.imread('webScreenshot/screenshot'+str(num)+'.png')
 		imageGrey = cv2.imread('webScreenshot/screenshot'+str(num)+'.png',0)
