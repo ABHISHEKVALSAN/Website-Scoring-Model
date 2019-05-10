@@ -229,6 +229,7 @@ def get_color_count(image):
 	#timeTaken(startTime,"Color Count",colorCount)
 	return colorCount
 def get_font_count(d,bs):
+	return 0
 	startTime=datetime.datetime.now()
 	divCount=len(bs.findAll("div"))
 	diffFont=set([])
@@ -342,8 +343,10 @@ def getMetrics(urlFile):
 		driver			= setDriverOptions()
 		driver.get(url)
 		driver.implicitly_wait(10)
+		import time
+		time.sleep(15)
 		driver.set_window_size(1024, 768)
-		WebDriverWait(driver, timeout=15).until(lambda x: x.find_elements_by_tag_name('div'))
+		WebDriverWait(driver, timeout=15).until(lambda x: x.find_elements_by_tag_name('body'))
 
 		driver.save_screenshot('webScreenshot/screenshot'+str(num)+'.png')
 		image = cv2.imread('webScreenshot/screenshot'+str(num)+'.png')
@@ -390,6 +393,7 @@ def getMetrics(urlFile):
 		csvWriter	= csv.writer(csvFile)
 		csvWriter.writerow(line)
 		csvFile.close()
+		driver.close()
 	except:
 		print(traceback.format_exc())
 		driver		=	setDriverOptions()
