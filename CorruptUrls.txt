@@ -1,9 +1,0 @@
-93,http://www.sportsgoodsindia.org/
-78,https://www.independent.co.uk/
-88,https://www.thetech.org/
-31,https://www.epicurious.com
-37,https://www.geniuskitchen.com/
-31,https://www.epicurious.com/
-52,https://www.self.com/
-53,https://cghs.gov.in/
-92,https://www.bleacherreport.com/
