@@ -17,12 +17,8 @@ import sys
 import unidecode
 import traceback
 import webcolors
-
-
 gridCount=1
 rois=[]
-
-
 def timeTaken(startTime, Metric, MetricValue=""):
 	print(Metric.ljust(25," "),datetime.datetime.now()-startTime,"\t\t",MetricValue)
 def string_to_words(s):
@@ -36,8 +32,6 @@ def get_words(d):
 		txt=""
 	words = string_to_words(str(unidecode.unidecode(txt)))
 	return words
-
-
 def get_word_count(d):
 	startTime=datetime.datetime.now()
 	words=get_words(d)
