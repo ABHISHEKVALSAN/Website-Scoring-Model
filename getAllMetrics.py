@@ -4,7 +4,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from pyvirtualdisplay import Display
-
 import csv
 import cv2
 import datetime
