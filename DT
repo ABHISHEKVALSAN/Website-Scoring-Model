@@ -1,0 +1,28 @@
+digraph Tree {
+node [shape=box] ;
+0 [label="body_text_percent <= -0.739\ngini = 0.482\nclass = good"] ;
+1 [label="gini = 0.0\nclass = bad"] ;
+0 -> 1 [labeldistance=2.5, labelangle=45, headlabel="True"] ;
+2 [label="colour_count <= 1.53\ngini = 0.43\nclass = good"] ;
+0 -> 2 [labeldistance=2.5, labelangle=-45, headlabel="False"] ;
+3 [label="visual_complexity <= 2.21\ngini = 0.366\nclass = good"] ;
+2 -> 3 ;
+4 [label="word_count <= 0.55\ngini = 0.302\nclass = good"] ;
+3 -> 4 ;
+5 [label="page_size <= -0.429\ngini = 0.219\nclass = good"] ;
+4 -> 5 ;
+6 [label="gini = 0.0\nclass = bad"] ;
+5 -> 6 ;
+7 [label="gini = 0.159\nclass = good"] ;
+5 -> 7 ;
+8 [label="graphic_count <= 2.335\ngini = 0.444\nclass = bad"] ;
+4 -> 8 ;
+9 [label="gini = 0.0\nclass = bad"] ;
+8 -> 9 ;
+10 [label="gini = 0.0\nclass = good"] ;
+8 -> 10 ;
+11 [label="gini = 0.0\nclass = bad"] ;
+3 -> 11 ;
+12 [label="gini = 0.0\nclass = bad"] ;
+2 -> 12 ;
+}
